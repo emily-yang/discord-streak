@@ -6,7 +6,7 @@ const schema = mongoose.Schema({
     default: Date.now,
   },
   winner: {
-    type: String,
+    type: Object,
     ref: 'player',
   },
   reportedBy: {

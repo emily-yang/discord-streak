@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-const SchemaTypes = mongoose.Schema.Types;
 const schema = mongoose.Schema({
   userId: {
     type: String,
@@ -8,11 +7,13 @@ const schema = mongoose.Schema({
     unique: true,
   },
   userName: String,
-  highestStreak: {
+  maxStreak: {
     type: Number,
     default: 0,
   },
 });
+
+schema.index({ userId: 1, maxStreak: -1 });
 
 const Player = mongoose.model('player', schema);
 
