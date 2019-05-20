@@ -111,7 +111,9 @@ class Database {
     }
     try {
       await Player.updateMany({}, { maxStreak: 0 });
-      await this.conn.db.dropCollection('reports', (err, result) => console.log(result));
+      await this.conn.db.dropCollection('reports', (err, result) => {
+        if (err) console.error(err);
+      });
     } catch (err) {
       console.error(err);
     }

@@ -1,3 +1,4 @@
+/* eslint-disable spaced-comment */
 require('dotenv').config();
 const { Client } = require('discord.js');
 const Database = require('./db/Database');
@@ -20,25 +21,33 @@ client.on('message', async message => {
   }
  */
 
+  /********************************
+   *   Handle !streaker command   *
+   ********************************/
   if (content === '!streaker') {
     channel.send(
       '\nUsage:\n**!winner *@username***  - report a match winner \n**!standings** - view the standings \n**!addplayer *@username*** - add a player to the standings \n**!undoreport** - cancel your last report \n**!reset**  - reset the standings '
     );
     return;
   }
+
+  /********************************
+   *    Handle !winner command    *
+   ********************************/
   if (content.match(/^!winner/gi)) {
     // check that a user was given
     const winner = message.mentions.users.first();
 
     if (!winner) {
-      channel.send('Error - must include a valid user\n Usage: *!addplayer <@username>*');
+      channel.send('Error - must include a valid user\n Usage: *!winner <@username>*');
       return;
     }
-    // TODO: Turn on bot checking
-    // if (winner.bot) {
-    //   channel.send('Error: winner cannot be a bot. Sorry, bot!');
-    //   return;
-    // }
+    // Turn on bot checking
+    if (winner.bot) {
+      channel.send('Error: winner cannot be a :robot:. Sorry, bot!');
+      return;
+    }
+
     // add player if not in db
     const player = (await db.findPlayer(winner.id)) || (await db.addPlayer(winner.id, winner.username));
     // update report
@@ -50,27 +59,35 @@ client.on('message', async message => {
     // confirm win in channel
     channel.send(`Win recorded for ${winner}`);
 
+    // post updated streak and standings
+    await displayCurrentStreak(channel);
     await displayStandings(channel);
   }
 
+  /*********************************
+   *   Handle !standings command   *
+   *********************************/
   if (content === '!standings') {
+    await displayCurrentStreak(channel);
     await displayStandings(channel);
   }
-  //= ==============================================
+
+  /*********************************
+   *   Handle !addplayer command   *
+   *********************************/
   if (content.match(/^!addplayer/gi)) {
     // check that a user was given
     const newPlayer = message.mentions.users.first();
-    console.log(newPlayer);
 
     if (!newPlayer) {
       channel.send('Error - must include a valid user\n Usage: *!addplayer <@username>*');
       return;
     }
-    // TODO: Turn on bot checking
-    // if (player.bot) {
-    //   channel.send('Error: player cannot be a bot. Sorry, bot!');
-    //   return;
-    // }
+    //  Turn on bot checking
+    if (newPlayer.bot) {
+      channel.send('Error: player cannot be a :robot:. Sorry, bot!');
+      return;
+    }
     // add player if not in db
 
     const playerLookup = await db.findPlayer(newPlayer.id);
@@ -80,13 +97,15 @@ client.on('message', async message => {
       await db.addPlayer(newPlayer.id, newPlayer.username);
 
       // confirm player addition in channel
-      channel.send(`@${newPlayer.username} has been added`);
+      channel.send(`@${newPlayer.username} has been added to the standings`);
 
-      // TODO: post current streak
+      // await displayStandings(channel);
     }
   }
-  //= =================================================
 
+  /**********************************
+   *   Handle !undoreport command   *
+   **********************************/
   if (content === '!undoreport') {
     channel.send('Undo last report');
     // confirm cancel
@@ -94,6 +113,9 @@ client.on('message', async message => {
     // post current streak
   }
 
+  /*****************************
+   *   Handle !reset command   *
+   *****************************/
   if (content === '!reset') {
     // TODO: confirm user wants to reset
     // set reset flag
@@ -105,11 +127,16 @@ client.on('message', async message => {
   }
 });
 
-async function displayStandings(channel) {
+/************************
+ *   Helper functions   *
+ ************************/
+async function displayCurrentStreak(channel) {
   // get current streak from last report
   const streak = await db.getLastReport();
   if (streak) channel.send(`*Running streak -  ${streak.winner.userName}: **${streak.streak}***`);
+}
 
+async function displayStandings(channel) {
   // get all standings
   const sorted = await db.getSortedPlayers();
 
