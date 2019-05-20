@@ -16,7 +16,7 @@ client.on('message', message => {
     message.channel.send('<@579121649945804810>');
   }
  */
-  console.log(message);
+
   if (content === '!streaker') {
     channel.send(
       '\nUsage:\n**!winner *@username***  - report a match winner \n**!standings** - view the standings \n**!undoreport** - cancel your last report \n**!reset**  - reset the standings '
