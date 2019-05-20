@@ -9,6 +9,7 @@ const client = new Client();
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
+  client.user.setPresence({ game: { name: 'Enter !!help for usage' }, status: 'online' }).catch(console.error);
 });
 
 client.login(process.env.BOT_TOKEN);
@@ -22,24 +23,24 @@ client.on('message', async message => {
  */
 
   /********************************
-   *   Handle !streaker command   *
+   *   Handle !!help command   *
    ********************************/
-  if (content === '!streaker') {
+  if (content === '!!help') {
     channel.send(
-      '\nUsage:\n**!winner *@username***  - report a match winner \n**!standings** - view the standings \n**!addplayer *@username*** - add a player to the standings \n**!undoreport** - cancel your last report \n**!reset**  - reset the standings '
+      '\nUsage:\n**!!winner *@username***  - report a match winner \n**!!standings** - view the standings \n**!!addplayer *@username*** - add a player to the standings \n**!!reset**  - reset the standings '
     );
     return;
   }
 
   /********************************
-   *    Handle !winner command    *
+   *    Handle !!winner command    *
    ********************************/
-  if (content.match(/^!winner/gi)) {
+  if (content.match(/^!!winner/gi)) {
     // check that a user was given
     const winner = message.mentions.users.first();
 
     if (!winner) {
-      channel.send('Error - must include a valid user\n Usage: *!winner <@username>*');
+      channel.send('Error: must include a valid user\nUsage: *!!winner @username*');
       return;
     }
     // Turn on bot checking
@@ -65,22 +66,22 @@ client.on('message', async message => {
   }
 
   /*********************************
-   *   Handle !standings command   *
+   *   Handle !!standings command   *
    *********************************/
-  if (content === '!standings') {
+  if (content === '!!standings') {
     await displayCurrentStreak(channel);
     await displayStandings(channel);
   }
 
   /*********************************
-   *   Handle !addplayer command   *
+   *   Handle !!addplayer command   *
    *********************************/
-  if (content.match(/^!addplayer/gi)) {
+  if (content.match(/^!!addplayer/gi)) {
     // check that a user was given
     const newPlayer = message.mentions.users.first();
 
     if (!newPlayer) {
-      channel.send('Error - must include a valid user\n Usage: *!addplayer <@username>*');
+      channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
       return;
     }
     //  Turn on bot checking
@@ -104,19 +105,19 @@ client.on('message', async message => {
   }
 
   /**********************************
-   *   Handle !undoreport command   *
+   *   Handle !!undoreport command   *
    **********************************/
-  if (content === '!undoreport') {
-    channel.send('Undo last report');
+  if (content === '!!undoreport') {
+    channel.send('Feature to undo last report coming soon!');
     // confirm cancel
     // cancel last report
     // post current streak
   }
 
   /*****************************
-   *   Handle !reset command   *
+   *   Handle !!reset command   *
    *****************************/
-  if (content === '!reset') {
+  if (content === '!!reset') {
     // TODO: confirm user wants to reset
     // set reset flag
     // reset standings
