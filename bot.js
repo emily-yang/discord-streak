@@ -22,7 +22,7 @@ const client = new Client();
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
-  client.user.setPresence({ game: { name: 'Enter !!help for usage' }, status: 'online' }).catch(console.error);
+  client.user.setPresence({ game: { name: '!!help for usage' }, status: 'online' }).catch(console.error);
 });
 
 client.login(process.env.BOT_TOKEN);
