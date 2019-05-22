@@ -28,6 +28,8 @@ client.on('ready', () => {
 
 client.login(process.env.BOT_TOKEN);
 
+const disallowBots = true;
+
 client.on('message', async message => {
   const { content, channel, reply } = message;
   /*   if (content === 'ping') {
@@ -58,10 +60,10 @@ client.on('message', async message => {
       return;
     }
     // TODO: Turn on bot checking
-    // if (winner.bot) {
-    //   channel.send('Error: winner cannot be a :robot:. Sorry, bot!');
-    //   return;
-    // }
+    if (disallowBots && winner.bot) {
+      channel.send('Error: winner cannot be a :robot:. Sorry, bot!');
+      return;
+    }
 
     // add player if not in db
     const player = (await db.getPlayer(winner.id)) || (await db.addPlayer(winner.id, winner.username));
@@ -101,10 +103,10 @@ client.on('message', async message => {
       return;
     }
     //  TODO: Turn on bot checking
-    // if (newPlayer.bot) {
-    //   channel.send('Error: player cannot be a :robot:. Sorry, bot!');
-    //   return;
-    // }
+    if (disallowBots && newPlayer.bot) {
+      channel.send('Error: player cannot be a :robot:. Sorry, bot!');
+      return;
+    }
 
     // add player if not in db
 
