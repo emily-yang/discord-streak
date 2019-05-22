@@ -5,19 +5,19 @@ const { Client } = require('discord.js');
 const http = require('http');
 const express = require('express');
 const Database = require('./db/Database');
+const { displayCurrentStreak, displayStandings } = require('./helpers');
 
-// const app = express();
-// app.get('/', (request, response) => {
-//   console.log(`${Date.now()} Ping Received`);
-//   response.sendStatus(200);
-// });
-// app.listen(process.env.PORT);
-// setInterval(() => {
-//   http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
-// }, 280000);
+const app = express();
+app.get('/', (request, response) => {
+  console.log(`${Date.now()} Ping Received`);
+  response.sendStatus(200);
+});
+app.listen(process.env.PORT);
+setInterval(() => {
+  http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
+}, 280000);
 
-// const db = new Database('discord-streak');
-const db = new Database('discord-streak-test');
+const db = new Database('process.env.DB_NAME');
 
 const client = new Client();
 
@@ -32,11 +32,6 @@ const disallowBots = true;
 
 client.on('message', async message => {
   const { content, channel, reply } = message;
-  /*   if (content === 'ping') {
-    // msg.reply('pong');
-    message.channel.send('<@579121649945804810>');
-  }
- */
 
   /********************************
    *   Handle !!help command   *
@@ -77,8 +72,8 @@ client.on('message', async message => {
     channel.send(`Win recorded for ${winner}`);
 
     // post updated streak and standings
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
+    await displayCurrentStreak(db, channel);
+    await displayStandings(db, channel);
 
     message.reply(report.id.toString());
   }
@@ -87,8 +82,8 @@ client.on('message', async message => {
    *   Handle !!standings command   *
    *********************************/
   if (content === '!!standings') {
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
+    await displayCurrentStreak(db, channel);
+    await displayStandings(db, channel);
   }
 
   /*********************************
@@ -129,7 +124,6 @@ client.on('message', async message => {
   if (content === '!!cancellast') {
     // get records
     const lastReport = await db.getLastReport();
-    console.log(lastReport);
 
     // handle if there are no reports in db
     if (!lastReport) {
@@ -150,8 +144,8 @@ client.on('message', async message => {
     channel.send('The last report has been deleted');
 
     // post current streak and standings
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
+    await displayCurrentStreak(db, channel);
+    await displayStandings(db, channel);
 
     message.reply(lastReport.id.toString());
   }
@@ -160,7 +154,7 @@ client.on('message', async message => {
    *   Handle !!reset command   *
    *****************************/
   if (content === '!!reset') {
-    // TODO: confirm user wants to reset
+    // TODO: confirm user wants to reset?
     // set reset flag
     // reset standings
     await db.resetStandings();
@@ -173,24 +167,24 @@ client.on('message', async message => {
 /************************
  *   Helper functions   *
  ************************/
-async function displayCurrentStreak(channel) {
-  // get current streak from last report
-  const streak = await db.getLastReport();
-  if (streak) channel.send(`*Running streak -  ${streak.winner.userName}: **${streak.streak}***`);
-}
+// async function displayCurrentStreak(channel) {
+//   // get current streak from last report
+//   const streak = await db.getLastReport();
+//   if (streak) channel.send(`*Running streak -  ${streak.winner.userName}: **${streak.streak}***`);
+// }
 
-async function displayStandings(channel) {
-  // get all standings
-  const sorted = await db.getSortedPlayers();
+// async function displayStandings(channel) {
+//   // get all standings
+//   const sorted = await db.getSortedPlayers();
 
-  // respond if standings are empty
-  if (sorted.length === 0) {
-    channel.send('Standings are empty right now. Make a report!');
-    return;
-  }
+//   // respond if standings are empty
+//   if (sorted.length === 0) {
+//     channel.send('Standings are empty right now. Make a report!');
+//     return;
+//   }
 
-  // print standings
-  const header = `__Standings__\n`;
-  const rankings = sorted.map(player => `${player.userName}: **${player.maxStreak}**`).join('\n');
-  channel.send(header.concat(rankings));
-}
+//   // print standings
+//   const header = `__Standings__\n`;
+//   const rankings = sorted.map(player => `${player.userName}: **${player.maxStreak}**`).join('\n');
+//   channel.send(header.concat(rankings));
+// }
