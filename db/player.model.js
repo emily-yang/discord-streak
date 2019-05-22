@@ -11,8 +11,13 @@ const schema = mongoose.Schema({
     type: Number,
     default: 0,
   },
+  streakMatches: {
+    type: [mongoose.SchemaTypes.ObjectId],
+    ref: 'report',
+  },
 });
 
+schema.index({ userId: 1 });
 schema.index({ userId: 1, maxStreak: -1 });
 
 const Player = mongoose.model('player', schema);

@@ -1,3 +1,4 @@
+/* eslint-disable spaced-comment */
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Player = require('./player.model');
@@ -11,6 +12,9 @@ class Database {
     this.connected = false;
   }
 
+  /********************
+   *    Connections   *
+   ********************/
   connect() {
     mongoose.connect(
       `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}/${
@@ -33,6 +37,10 @@ class Database {
     console.log('Disconnected from database');
   }
 
+  /****************
+   *    Players   *
+   ***************/
+
   async addPlayer(userId, userName) {
     if (!this.connected) {
       this.connect();
@@ -44,7 +52,7 @@ class Database {
     }
   }
 
-  async findPlayer(userId) {
+  async getPlayer(userId) {
     if (!this.connected) {
       this.connect();
     }
@@ -66,12 +74,42 @@ class Database {
     }
   }
 
-  async updatePlayerMaxStreak(userId) {
+  async incPlayerMaxStreak(userId, reportId) {
     if (!this.connected) {
       this.connect();
     }
     try {
-      return await Player.findOneAndUpdate({ userId }, { $inc: { maxStreak: 1 } });
+      return await Player.findOneAndUpdate({ userId }, { $inc: { maxStreak: 1 }, $push: { streakMatches: reportId } });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async decPlayerMaxStreak(userId) {
+    if (!this.connected) {
+      this.connect();
+    }
+    try {
+      // eslint-disable-next-line prettier/prettier
+      return await Player.findOneAndUpdate(
+        { userId },
+        { $inc: { maxStreak: -1 } ,
+         $pop: { streakMatches: 1 } });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  /****************
+   *    Reports   *
+   ***************/
+
+  async getReports() {
+    if (!this.connected) {
+      this.connect();
+    }
+    try {
+      return await Report.find().sort({ timestamp: -1 });
     } catch (err) {
       console.error(err);
     }
@@ -105,12 +143,27 @@ class Database {
     }
   }
 
+  async deleteLastReport() {
+    if (!this.connected) {
+      this.connect();
+    }
+    try {
+      return await Report.findOneAndDelete({}, { sort: { _id: -1 } });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  /***************
+   *    Resets   *
+   **************/
+
   async resetStandings() {
     if (!this.connected) {
       this.connect();
     }
     try {
-      await Player.updateMany({}, { maxStreak: 0 });
+      await Player.updateMany({}, { maxStreak: 0, streakMatches: [] });
       await this.conn.db.dropCollection('reports', (err, result) => {
         if (err) console.error(err);
       });
