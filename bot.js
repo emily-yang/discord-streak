@@ -6,17 +6,18 @@ const http = require('http');
 const express = require('express');
 const Database = require('./db/Database');
 
-const app = express();
-app.get('/', (request, response) => {
-  console.log(`${Date.now()} Ping Received`);
-  response.sendStatus(200);
-});
-app.listen(process.env.PORT);
-setInterval(() => {
-  http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
-}, 280000);
+// const app = express();
+// app.get('/', (request, response) => {
+//   console.log(`${Date.now()} Ping Received`);
+//   response.sendStatus(200);
+// });
+// app.listen(process.env.PORT);
+// setInterval(() => {
+//   http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
+// }, 280000);
 
-const db = new Database('discord-streak');
+// const db = new Database('discord-streak');
+const db = new Database('discord-streak-test');
 
 const client = new Client();
 
@@ -27,8 +28,10 @@ client.on('ready', () => {
 
 client.login(process.env.BOT_TOKEN);
 
+const disallowBots = true;
+
 client.on('message', async message => {
-  const { content, channel } = message;
+  const { content, channel, reply } = message;
   /*   if (content === 'ping') {
     // msg.reply('pong');
     message.channel.send('<@579121649945804810>');
@@ -40,7 +43,7 @@ client.on('message', async message => {
    ********************************/
   if (content === '!!help') {
     channel.send(
-      '\nUsage:\n**!!winner *@username***  - report a match winner \n**!!standings** - view the standings \n**!!addplayer *@username*** - add a player to the standings \n**!!reset**  - reset the standings '
+      '\nUsage: \n**!!standings** - view the standings \n**!!winner *@username*** - report a match winner \n**!!cancellast** - cancel the last report \n**!!addplayer *@username*** - add a player to the standings \n**!!reset**  - reset the standings '
     );
     return;
   }
@@ -56,19 +59,19 @@ client.on('message', async message => {
       channel.send('Error: must include a valid user\nUsage: *!!winner @username*');
       return;
     }
-    // Turn on bot checking
-    if (winner.bot) {
+    // TODO: Turn on bot checking
+    if (disallowBots && winner.bot) {
       channel.send('Error: winner cannot be a :robot:. Sorry, bot!');
       return;
     }
 
     // add player if not in db
-    const player = (await db.findPlayer(winner.id)) || (await db.addPlayer(winner.id, winner.username));
+    const player = (await db.getPlayer(winner.id)) || (await db.addPlayer(winner.id, winner.username));
     // update report
     const report = await db.addReport(player.userId, player.userName, message.author.id);
     // update player if current streak is higher than their highest streak
     if (report.streak > player.maxStreak) {
-      const updated = await db.updatePlayerMaxStreak(player.userId);
+      await db.incPlayerMaxStreak(player.userId, report.id);
     }
     // confirm win in channel
     channel.send(`Win recorded for ${winner}`);
@@ -76,6 +79,8 @@ client.on('message', async message => {
     // post updated streak and standings
     await displayCurrentStreak(channel);
     await displayStandings(channel);
+
+    message.reply(report.id.toString());
   }
 
   /*********************************
@@ -97,14 +102,15 @@ client.on('message', async message => {
       channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
       return;
     }
-    //  Turn on bot checking
-    if (newPlayer.bot) {
+    //  TODO: Turn on bot checking
+    if (disallowBots && newPlayer.bot) {
       channel.send('Error: player cannot be a :robot:. Sorry, bot!');
       return;
     }
+
     // add player if not in db
 
-    const playerLookup = await db.findPlayer(newPlayer.id);
+    const playerLookup = await db.getPlayer(newPlayer.id);
     if (playerLookup) {
       channel.send(`Player already exists!`);
     } else {
@@ -118,13 +124,36 @@ client.on('message', async message => {
   }
 
   /**********************************
-   *   Handle !!undoreport command   *
+   *   Handle !!cancellast command   *
    **********************************/
-  if (content === '!!undoreport') {
-    channel.send('Feature to undo last report coming soon!');
-    // confirm cancel
-    // cancel last report
-    // post current streak
+  if (content === '!!cancellast') {
+    // get records
+    const lastReport = await db.getLastReport();
+    console.log(lastReport);
+
+    // handle if there are no reports in db
+    if (!lastReport) {
+      channel.send('There are no matches reported!');
+      return;
+    }
+
+    // decrement player record max streak if last report was a new record
+    const lastWinnerId = lastReport.winner.userId;
+    const { streakMatches } = await db.getPlayer(lastWinnerId);
+    const lastStreakMatch = streakMatches.pop();
+    if (lastReport._id.toString() === lastStreakMatch.toString()) {
+      await db.decPlayerMaxStreak(lastWinnerId);
+    }
+
+    // delete the last report
+    await db.deleteLastReport();
+    channel.send('The last report has been deleted');
+
+    // post current streak and standings
+    await displayCurrentStreak(channel);
+    await displayStandings(channel);
+
+    message.reply(lastReport.id.toString());
   }
 
   /*****************************
