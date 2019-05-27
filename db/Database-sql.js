@@ -3,21 +3,27 @@ require('dotenv').config();
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 
-const dbFile = './.data/sqlite.db';
-const exists = fs.existsSync(dbFile);
-
 class Database {
   constructor(dbName) {
     if (!dbName) this.dbName = 'discord-streak-sql';
     else this.dbName = dbName;
-    this.conn = null;
+    this.db = null;
     this.connected = false;
   }
 
   /********************
    *    Connections   *
    ********************/
-  connect() {}
+  connect() {
+    const dbFile = `./.data/${this.dbName}.db`;
+    const dbExists = fs.existsSync(dbFile);
+    this.db = new sqlite3.Database(dbFile);
+    this.db.serialize(() => {
+      if (!dbExists) {
+        this.db.run('CREATE TABLE ');
+      }
+    });
+  }
 
   disconnect() {}
 
