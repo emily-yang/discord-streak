@@ -12,11 +12,19 @@ class PlayerRepository {
     return this.dao.run(sql);
   }
 
-  create(id, name) {
+  add(id, name) {
     return this.dao.run(
       `INSERT INTO players (id, name)
       VALUES (?,?)`,
       [id, name]
+    );
+  }
+
+  getById(id) {
+    return this.dao.get(
+      `SELECT * FROM players
+      WHERE id = ?`,
+      [id]
     );
   }
 }

@@ -23,6 +23,24 @@ class AppDAO {
       console.error(err);
     }
   }
+
+  async get(sql, params = []) {
+    try {
+      return await this.db.get(sql, params);
+    } catch (err) {
+      console.error('SQL error with ', sql);
+      console.error(err);
+    }
+  }
+
+  async all(sql, params = []) {
+    try {
+      return await this.db.all(sql, params);
+    } catch (err) {
+      console.error('SQL error with ', sql);
+      console.error(err);
+    }
+  }
 }
 
 module.exports = AppDAO;
