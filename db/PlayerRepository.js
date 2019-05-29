@@ -14,7 +14,7 @@ class PlayerRepository {
 
   add(id, name) {
     return this.dao.run(
-      `INSERT INTO players (id, name)
+      `INSERT OR IGNORE INTO players (id, name)
       VALUES (?,?)`,
       [id, name]
     );

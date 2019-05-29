@@ -4,7 +4,10 @@ const { Client } = require('discord.js');
 
 const http = require('http');
 const express = require('express');
-const Database = require('./db/Database');
+// const Database = require('./db/Database');
+const AppDAO = require('./db/dao');
+const PlayerRepository = require('./db/PlayerRepository');
+const MatchRepository = require('./db/MatchRepository');
 
 // const app = express();
 // app.get('/', (request, response) => {
@@ -17,7 +20,12 @@ const Database = require('./db/Database');
 // }, 280000);
 
 // const db = new Database('discord-streak');
-const db = new Database('discord-streak-test');
+// const db = new Database('discord-streak-test');
+const dao = new AppDAO('./db/.data');
+const playerRepo = new PlayerRepository(dao);
+const matchRepo = new MatchRepository(dao);
+playerRepo.createTable();
+matchRepo.createTable();
 
 const client = new Client();
 
@@ -28,7 +36,7 @@ client.on('ready', () => {
 
 client.login(process.env.BOT_TOKEN);
 
-const disallowBots = true;
+const disallowBots = false;
 
 client.on('message', async message => {
   const { content, channel, reply } = message;
@@ -65,108 +73,102 @@ client.on('message', async message => {
       return;
     }
 
-    // add player if not in db
-    const player = (await db.getPlayer(winner.id)) || (await db.addPlayer(winner.id, winner.username));
-    // update report
-    const report = await db.addReport(player.userId, player.userName, message.author.id);
-    // update player if current streak is higher than their highest streak
-    if (report.streak > player.maxStreak) {
-      await db.incPlayerMaxStreak(player.userId, report.id);
-    }
-    // confirm win in channel
-    channel.send(`Win recorded for ${winner}`);
+    try {
+      // add player if not in db
+      await playerRepo.add(winner.id, winner.username);
+      // get last match and calculate new streak
+      const lastMatch = await matchRepo.getLastMatch();
+      const streak = !lastMatch || lastMatch.winner !== winner.id ? 1 : lastMatch.streak + 1;
+      // insert new match
+      await matchRepo.add(streak, winner.id);
 
-    // post updated streak and standings
+      // TODO: remove check
+      const addedMatch = await matchRepo.getLastMatch();
+      console.log('added match data: ', addedMatch);
+    } catch (err) {
+      console.error(err);
+    }
+
+    // // post updated streak and standings
     await displayCurrentStreak(channel);
     await displayStandings(channel);
 
-    message.reply(report.id.toString());
+    // message.reply(report.id.toString());
   }
 
   /*********************************
    *   Handle !!standings command   *
    *********************************/
-  if (content === '!!standings') {
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
-  }
+  // if (content === '!!standings') {
+  //   await displayCurrentStreak(channel);
+  //   await displayStandings(channel);
+  // }
 
   /*********************************
    *   Handle !!addplayer command   *
    *********************************/
   if (content.match(/^!!addplayer/gi)) {
-    // check that a user was given
-    const newPlayer = message.mentions.users.first();
-
-    if (!newPlayer) {
-      channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
-      return;
-    }
-    //  TODO: Turn on bot checking
-    if (disallowBots && newPlayer.bot) {
-      channel.send('Error: player cannot be a :robot:. Sorry, bot!');
-      return;
-    }
-
-    // add player if not in db
-
-    const playerLookup = await db.getPlayer(newPlayer.id);
-    if (playerLookup) {
-      channel.send(`Player already exists!`);
-    } else {
-      await db.addPlayer(newPlayer.id, newPlayer.username);
-
-      // confirm player addition in channel
-      channel.send(`@${newPlayer.username} has been added to the standings`);
-
-      // await displayStandings(channel);
-    }
+    //   // check that a user was given
+    //   const newPlayer = message.mentions.users.first();
+    //   if (!newPlayer) {
+    //     channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
+    //     return;
+    //   }
+    //   //  TODO: Turn on bot checking
+    //   if (disallowBots && newPlayer.bot) {
+    //     channel.send('Error: player cannot be a :robot:. Sorry, bot!');
+    //     return;
+    //   }
+    //   // add player if not in db
+    //   const playerLookup = await db.getPlayer(newPlayer.id);
+    //   if (playerLookup) {
+    //     channel.send(`Player already exists!`);
+    //   } else {
+    //     await db.addPlayer(newPlayer.id, newPlayer.username);
+    //     // confirm player addition in channel
+    //     channel.send(`@${newPlayer.username} has been added to the standings`);
+    //     // await displayStandings(channel);
+    //   }
   }
 
   /**********************************
    *   Handle !!cancellast command   *
    **********************************/
   if (content === '!!cancellast') {
-    // get records
-    const lastReport = await db.getLastReport();
-    console.log(lastReport);
-
-    // handle if there are no reports in db
-    if (!lastReport) {
-      channel.send('There are no matches reported!');
-      return;
-    }
-
-    // decrement player record max streak if last report was a new record
-    const lastWinnerId = lastReport.winner.userId;
-    const { streakMatches } = await db.getPlayer(lastWinnerId);
-    const lastStreakMatch = streakMatches.pop();
-    if (lastReport._id.toString() === lastStreakMatch.toString()) {
-      await db.decPlayerMaxStreak(lastWinnerId);
-    }
-
-    // delete the last report
-    await db.deleteLastReport();
-    channel.send('The last report has been deleted');
-
-    // post current streak and standings
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
-
-    message.reply(lastReport.id.toString());
+    // // get records
+    // const lastReport = await db.getLastReport();
+    // console.log(lastReport);
+    // // handle if there are no reports in db
+    // if (!lastReport) {
+    //   channel.send('There are no matches reported!');
+    //   return;
+    // }
+    // // decrement player record max streak if last report was a new record
+    // const lastWinnerId = lastReport.winner.userId;
+    // const { streakMatches } = await db.getPlayer(lastWinnerId);
+    // const lastStreakMatch = streakMatches.pop();
+    // if (lastReport._id.toString() === lastStreakMatch.toString()) {
+    //   await db.decPlayerMaxStreak(lastWinnerId);
+    // }
+    // // delete the last report
+    // await db.deleteLastReport();
+    // channel.send('The last report has been deleted');
+    // // post current streak and standings
+    // await displayCurrentStreak(channel);
+    // await displayStandings(channel);
+    // message.reply(lastReport.id.toString());
   }
 
   /*****************************
    *   Handle !!reset command   *
    *****************************/
   if (content === '!!reset') {
-    // TODO: confirm user wants to reset
-    // set reset flag
-    // reset standings
-    await db.resetStandings();
-
-    // send reset message
-    channel.send('Standings have been reset');
+    // // TODO: confirm user wants to reset
+    // // set reset flag
+    // // reset standings
+    // await db.resetStandings();
+    // // send reset message
+    // channel.send('Standings have been reset');
   }
 });
 
@@ -174,23 +176,23 @@ client.on('message', async message => {
  *   Helper functions   *
  ************************/
 async function displayCurrentStreak(channel) {
-  // get current streak from last report
-  const streak = await db.getLastReport();
-  if (streak) channel.send(`*Running streak -  ${streak.winner.userName}: **${streak.streak}***`);
+  try {
+    const lastMatch = await matchRepo.getLastMatch();
+    const playerName = (await playerRepo.getById(lastMatch.winner)).name;
+    if (lastMatch) channel.send(`*Running streak -  ${playerName}: **${lastMatch.streak}***`);
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function displayStandings(channel) {
-  // get all standings
-  const sorted = await db.getSortedPlayers();
-
-  // respond if standings are empty
-  if (sorted.length === 0) {
-    channel.send('Standings are empty right now. Make a report!');
-    return;
+  try {
+    const players = await playerRepo.getPlayersSortedByStreak();
+    // // print standings
+    const header = `__Standings__\n`;
+    const rankings = players.map(player => `${player.name}: **${player.maxstreak}**`).join('\n');
+    channel.send(header.concat(rankings));
+  } catch (err) {
+    console.error(err);
   }
-
-  // print standings
-  const header = `__Standings__\n`;
-  const rankings = sorted.map(player => `${player.userName}: **${player.maxStreak}**`).join('\n');
-  channel.send(header.concat(rankings));
 }
