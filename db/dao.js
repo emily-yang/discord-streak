@@ -14,32 +14,46 @@ class AppDAO {
     });
   }
 
-  // RUN: used to create or alter tables and to insert or update table data
   async run(sql, params = []) {
-    try {
-      return await this.db.run(sql, params);
-    } catch (err) {
-      console.error('SQL error with ', sql);
-      console.error(err);
-    }
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          console.log(`Error running sql ${sql}`);
+          console.log(err);
+          reject(err);
+        } else {
+          resolve({ id: this.lastID });
+        }
+      });
+    });
   }
 
-  async get(sql, params = []) {
-    try {
-      return await this.db.get(sql, params);
-    } catch (err) {
-      console.error('SQL error with ', sql);
-      console.error(err);
-    }
+  get(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, params, (err, result) => {
+        if (err) {
+          console.log(`Error running sql: ${sql}`);
+          console.log(err);
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
   }
 
-  async all(sql, params = []) {
-    try {
-      return await this.db.all(sql, params);
-    } catch (err) {
-      console.error('SQL error with ', sql);
-      console.error(err);
-    }
+  all(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      this.db.all(sql, params, (err, rows) => {
+        if (err) {
+          console.log(`Error running sql: ${sql}`);
+          console.log(err);
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
   }
 }
 
