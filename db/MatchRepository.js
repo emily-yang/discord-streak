@@ -9,7 +9,7 @@ class MatchRepository {
       streak INTEGER,
       winner TEXT references PLAYERS(id),
       timestamp TEXT
-    `;
+    )`;
     return this.dao.run(sql);
   }
 
@@ -33,7 +33,7 @@ class MatchRepository {
     return this.dao.run(
       `DELETE FROM matches
       WHERE timestamp =
-        (SELECT MAX(datetime) FROM table)`
+        (SELECT MAX(timestamp) FROM matches)`
     );
   }
 

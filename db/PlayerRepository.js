@@ -6,9 +6,9 @@ class PlayerRepository {
   createTable() {
     const sql = `
     CREATE TABLE IF NOT EXISTS players (
-      id TEXT PRIMARY KEY
+      id TEXT PRIMARY KEY,
       name TEXT
-    `;
+    )`;
     return this.dao.run(sql);
   }
 
@@ -25,6 +25,17 @@ class PlayerRepository {
       `SELECT * FROM players
       WHERE id = ?`,
       [id]
+    );
+  }
+
+  getPlayersSortedByStreak() {
+    return this.dao.all(
+      `SELECT name, IFNULL(streak, 0) AS maxstreak
+      FROM players AS p
+      LEFT OUTER JOIN
+      (SELECT winner, MAX(streak) AS streak FROM matches GROUP BY winner) AS m
+      ON m.winner = p.id
+      ORDER BY streak DESC`
     );
   }
 }
