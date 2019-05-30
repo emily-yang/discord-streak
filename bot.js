@@ -99,36 +99,35 @@ client.on('message', async message => {
   /*********************************
    *   Handle !!standings command   *
    *********************************/
-  // if (content === '!!standings') {
-  //   await displayCurrentStreak(channel);
-  //   await displayStandings(channel);
-  // }
+  if (content === '!!standings') {
+    await displayCurrentStreak(channel);
+    await displayStandings(channel);
+  }
 
   /*********************************
    *   Handle !!addplayer command   *
    *********************************/
   if (content.match(/^!!addplayer/gi)) {
     //   // check that a user was given
-    //   const newPlayer = message.mentions.users.first();
-    //   if (!newPlayer) {
-    //     channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
-    //     return;
-    //   }
-    //   //  TODO: Turn on bot checking
-    //   if (disallowBots && newPlayer.bot) {
-    //     channel.send('Error: player cannot be a :robot:. Sorry, bot!');
-    //     return;
-    //   }
+    const newPlayer = message.mentions.users.first();
+    if (!newPlayer) {
+      channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
+      return;
+    }
+    //  TODO: Turn on bot checking
+    if (disallowBots && newPlayer.bot) {
+      channel.send('Error: player cannot be a :robot:. Sorry, bot!');
+      return;
+    }
     //   // add player if not in db
-    //   const playerLookup = await db.getPlayer(newPlayer.id);
-    //   if (playerLookup) {
-    //     channel.send(`Player already exists!`);
-    //   } else {
-    //     await db.addPlayer(newPlayer.id, newPlayer.username);
-    //     // confirm player addition in channel
-    //     channel.send(`@${newPlayer.username} has been added to the standings`);
-    //     // await displayStandings(channel);
-    //   }
+    const player = await playerRepo.getById(newPlayer.id);
+    if (player) {
+      channel.send(`Player already exists!`);
+    } else {
+      await playerRepo.add(newPlayer.id, newPlayer.username);
+      // confirm player addition in channel
+      channel.send(`@${newPlayer.username} has been added to the standings`);
+    }
   }
 
   /**********************************
@@ -164,11 +163,10 @@ client.on('message', async message => {
    *****************************/
   if (content === '!!reset') {
     // // TODO: confirm user wants to reset
-    // // set reset flag
     // // reset standings
-    // await db.resetStandings();
-    // // send reset message
-    // channel.send('Standings have been reset');
+    await matchRepo.deleteAllMatches();
+    // send reset message
+    channel.send('Standings have been reset');
   }
 });
 
@@ -178,8 +176,10 @@ client.on('message', async message => {
 async function displayCurrentStreak(channel) {
   try {
     const lastMatch = await matchRepo.getLastMatch();
-    const playerName = (await playerRepo.getById(lastMatch.winner)).name;
-    if (lastMatch) channel.send(`*Running streak -  ${playerName}: **${lastMatch.streak}***`);
+    if (lastMatch) {
+      const playerName = (await playerRepo.getById(lastMatch.winner)).name;
+      channel.send(`*Running streak -  ${playerName}: **${lastMatch.streak}***`);
+    }
   } catch (err) {
     console.error(err);
   }
