@@ -85,23 +85,24 @@ client.on('message', async message => {
       // TODO: remove check
       const addedMatch = await matchRepo.getLastMatch();
       console.log('added match data: ', addedMatch);
+      // // post updated streak and standings
+      await displayCurrentStreak(channel);
+      await displayStandings(channel);
     } catch (err) {
       console.error(err);
     }
-
-    // // post updated streak and standings
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
-
-    // message.reply(report.id.toString());
   }
 
   /*********************************
    *   Handle !!standings command   *
    *********************************/
   if (content === '!!standings') {
-    await displayCurrentStreak(channel);
-    await displayStandings(channel);
+    try {
+      await displayCurrentStreak(channel);
+      await displayStandings(channel);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   /*********************************
@@ -120,13 +121,17 @@ client.on('message', async message => {
       return;
     }
     //   // add player if not in db
-    const player = await playerRepo.getById(newPlayer.id);
-    if (player) {
-      channel.send(`Player already exists!`);
-    } else {
-      await playerRepo.add(newPlayer.id, newPlayer.username);
-      // confirm player addition in channel
-      channel.send(`@${newPlayer.username} has been added to the standings`);
+    try {
+      const player = await playerRepo.getById(newPlayer.id);
+      if (player) {
+        channel.send(`Player already exists!`);
+      } else {
+        await playerRepo.add(newPlayer.id, newPlayer.username);
+        // confirm player addition in channel
+        channel.send(`@${newPlayer.username} has been added to the standings`);
+      }
+    } catch (err) {
+      console.error(err);
     }
   }
 
@@ -135,13 +140,22 @@ client.on('message', async message => {
    **********************************/
   if (content === '!!cancellast') {
     // // get records
-    // const lastReport = await db.getLastReport();
-    // console.log(lastReport);
+    const lastMatch = await matchRepo.getLastMatch();
     // // handle if there are no reports in db
-    // if (!lastReport) {
-    //   channel.send('There are no matches reported!');
-    //   return;
-    // }
+    if (!lastMatch) {
+      channel.send('There are no matches reported!');
+      return;
+    }
+    try {
+      // delete most recent match
+      await matchRepo.deleteLastMatch();
+      channel.send('The last report has been deleted');
+      // // post current streak and standings
+      await displayCurrentStreak(channel);
+      await displayStandings(channel);
+    } catch (err) {
+      console.error(err);
+    }
     // // decrement player record max streak if last report was a new record
     // const lastWinnerId = lastReport.winner.userId;
     // const { streakMatches } = await db.getPlayer(lastWinnerId);
@@ -163,10 +177,13 @@ client.on('message', async message => {
    *****************************/
   if (content === '!!reset') {
     // // TODO: confirm user wants to reset
-    // // reset standings
-    await matchRepo.deleteAllMatches();
-    // send reset message
-    channel.send('Standings have been reset');
+    try {
+      await matchRepo.deleteAllMatches();
+      // send reset message
+      channel.send('Standings have been reset');
+    } catch (err) {
+      console.error(err);
+    }
   }
 });
 
