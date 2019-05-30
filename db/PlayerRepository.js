@@ -38,6 +38,10 @@ class PlayerRepository {
       ORDER BY streak DESC`
     );
   }
+
+  deleteAllPlayers() {
+    return this.dao.run(`DELETE FROM players`);
+  }
 }
 
 module.exports = PlayerRepository;
