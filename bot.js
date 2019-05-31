@@ -56,7 +56,7 @@ client.on('message', async message => {
       channel.send('Error: must include a valid user\nUsage: *!!winner @username*');
       return;
     }
-    // TODO: Turn on bot checking
+
     if (disallowBots && winner.bot) {
       channel.send('Error: winner cannot be a :robot:. Sorry, bot!');
       return;
@@ -191,5 +191,9 @@ client.on('message', async message => {
   }
 });
 
-client.on('disconnect', db.dao.close());
-client.on('error', db.dao.close());
+client.on('disconnect', () => {
+  if (db) db.dao.close();
+});
+client.on('error', () => {
+  if (db) db.dao.close();
+});
