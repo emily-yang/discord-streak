@@ -1,14 +1,13 @@
 /* eslint-disable spaced-comment */
 require('dotenv').config();
 const { Client } = require('discord.js');
-
 const http = require('http');
 const fs = require('fs');
 const express = require('express');
-
-const { startConnection, displayCurrentStreak, displayStandings } = require('./helpers');
+const { startConnection, createTablesIfNotExist, displayCurrentStreak, displayStandings } = require('./helpers');
 
 // const app = express();
+// app.get('/', (request, response) => {
 // app.get('/', (request, response) => {
 //   console.log(`${Date.now()} Ping Received`);
 //   response.sendStatus(200);
@@ -28,28 +27,14 @@ client.on('ready', () => {
 client.login(process.env.BOT_TOKEN);
 
 const disallowBots = false;
+let db;
 
 client.on('message', async message => {
   const { content, channel } = message;
   const serverId = channel.guild.id;
-  const dbExists = fs.existsSync(`./db/.${serverId}`);
 
   let matches;
   let players;
-
-  // try {
-  //   const repos = await startDB(serverId);
-  //   matches = repos.matchRepo;
-  //   players = repos.playerRepo;
-
-  //   if (!dbExists) {
-  //     await players.createTable();
-  //     await matches.createTable();
-  //   }
-  // } catch (err) {
-  //   console.error('Error with connecting: ', err);
-  // }
-
   /********************************
    *   Handle !!help command   *
    ********************************/
@@ -77,11 +62,11 @@ client.on('message', async message => {
       return;
     }
 
+    db = await startConnection(serverId);
+    players = db.playerRepo;
+    matches = db.matchRepo;
     try {
-      const repos = await startConnection(serverId);
-      players = repos.playerRepo;
-      matches = repos.matchRepo;
-
+      await createTablesIfNotExist(serverId, players, matches);
       // add player if not in db
       await players.add(winner.id, winner.username);
       // get last match and calculate new streak
@@ -95,6 +80,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
+      db.dao.close();
     }
   }
 
@@ -102,11 +88,11 @@ client.on('message', async message => {
    *   Handle !!standings command   *
    *********************************/
   if (content === '!!standings') {
+    db = await startConnection(serverId);
+    players = db.playerRepo;
+    matches = db.matchRepo;
     try {
-      const repos = await startConnection(serverId);
-      players = repos.playerRepo;
-      matches = repos.matchRepo;
-
+      await createTablesIfNotExist(serverId, players, matches);
       const lastMatch = await matches.getLastMatch();
       // // handle if there are no reports in db
       if (!lastMatch) {
@@ -117,6 +103,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
+      db.dao.close();
     }
   }
 
@@ -124,23 +111,23 @@ client.on('message', async message => {
    *   Handle !!addplayer command   *
    *********************************/
   if (content.match(/^!!addplayer/gi)) {
-    //   // check that a user was given
+    // check that a user was given
     const newPlayer = message.mentions.users.first();
     if (!newPlayer) {
       channel.send('Error: must include a valid user\nUsage: *!!addplayer @username*');
       return;
     }
-    //  TODO: Turn on bot checking
+
     if (disallowBots && newPlayer.bot) {
       channel.send('Error: player cannot be a :robot:. Sorry, bot!');
       return;
     }
     //   // add player if not in db
+    db = await startConnection(serverId);
+    players = db.playerRepo;
+    matches = db.matchRepo;
     try {
-      const repos = await startConnection(serverId);
-      players = repos.playerRepo;
-      matches = repos.matchRepo;
-
+      await createTablesIfNotExist(serverId, players, matches);
       const player = await players.getById(newPlayer.id);
       if (player) {
         channel.send(`Player already exists!`);
@@ -151,6 +138,7 @@ client.on('message', async message => {
       }
     } catch (err) {
       console.error(err);
+      db.dao.close();
     }
   }
 
@@ -158,11 +146,11 @@ client.on('message', async message => {
    *   Handle !!cancellast command   *
    **********************************/
   if (content === '!!cancellast') {
+    db = await startConnection(serverId);
+    players = db.playerRepo;
+    matches = db.matchRepo;
     try {
-      const repos = await startConnection(serverId);
-      players = repos.playerRepo;
-      matches = repos.matchRepo;
-
+      await createTablesIfNotExist(serverId, players, matches);
       // get records
       const lastMatch = await matches.getLastMatch();
       // // handle if there are no reports in db
@@ -179,6 +167,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
+      db.dao.close();
     }
   }
 
@@ -186,17 +175,21 @@ client.on('message', async message => {
    *   Handle !!reset command   *
    *****************************/
   if (content === '!!reset') {
+    db = await startConnection(serverId);
+    players = db.playerRepo;
+    matches = db.matchRepo;
     try {
-      const repos = await startConnection(serverId);
-      players = repos.playerRepo;
-      matches = repos.matchRepo;
-
+      await createTablesIfNotExist(serverId, players, matches);
       await matches.deleteAllMatches();
       await players.deleteAllPlayers();
       // send reset message
       channel.send('Standings have been reset');
     } catch (err) {
       console.error(err);
+      db.dao.close();
     }
   }
 });
+
+client.on('disconnect', db.dao.close());
+client.on('error', db.dao.close());
