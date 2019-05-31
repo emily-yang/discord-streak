@@ -3,11 +3,10 @@ require('dotenv').config();
 const { Client } = require('discord.js');
 
 const http = require('http');
+const fs = require('fs');
 const express = require('express');
-// const Database = require('./db/Database');
-const AppDAO = require('./db/dao');
-const PlayerRepository = require('./db/PlayerRepository');
-const MatchRepository = require('./db/MatchRepository');
+
+const { startConnection, displayCurrentStreak, displayStandings } = require('./helpers');
 
 // const app = express();
 // app.get('/', (request, response) => {
@@ -18,14 +17,6 @@ const MatchRepository = require('./db/MatchRepository');
 // setInterval(() => {
 //   http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
 // }, 280000);
-
-// const db = new Database('discord-streak');
-// const db = new Database('discord-streak-test');
-const dao = new AppDAO('./db/.data');
-const playerRepo = new PlayerRepository(dao);
-const matchRepo = new MatchRepository(dao);
-playerRepo.createTable();
-matchRepo.createTable();
 
 const client = new Client();
 
@@ -39,12 +30,25 @@ client.login(process.env.BOT_TOKEN);
 const disallowBots = false;
 
 client.on('message', async message => {
-  const { content, channel, reply } = message;
-  /*   if (content === 'ping') {
-    // msg.reply('pong');
-    message.channel.send('<@579121649945804810>');
-  }
- */
+  const { content, channel } = message;
+  const serverId = channel.guild.id;
+  const dbExists = fs.existsSync(`./db/.${serverId}`);
+
+  let matches;
+  let players;
+
+  // try {
+  //   const repos = await startDB(serverId);
+  //   matches = repos.matchRepo;
+  //   players = repos.playerRepo;
+
+  //   if (!dbExists) {
+  //     await players.createTable();
+  //     await matches.createTable();
+  //   }
+  // } catch (err) {
+  //   console.error('Error with connecting: ', err);
+  // }
 
   /********************************
    *   Handle !!help command   *
@@ -74,17 +78,21 @@ client.on('message', async message => {
     }
 
     try {
+      const repos = await startConnection(serverId);
+      players = repos.playerRepo;
+      matches = repos.matchRepo;
+
       // add player if not in db
-      await playerRepo.add(winner.id, winner.username);
+      await players.add(winner.id, winner.username);
       // get last match and calculate new streak
-      const lastMatch = await matchRepo.getLastMatch();
+      const lastMatch = await matches.getLastMatch();
       const streak = !lastMatch || lastMatch.winner !== winner.id ? 1 : lastMatch.streak + 1;
       // insert new match
-      await matchRepo.add(streak, winner.id);
+      await matches.add(streak, winner.id);
 
       // // post updated streak and standings
-      await displayCurrentStreak(channel);
-      await displayStandings(channel);
+      await displayCurrentStreak(channel, players, matches);
+      await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
     }
@@ -95,14 +103,18 @@ client.on('message', async message => {
    *********************************/
   if (content === '!!standings') {
     try {
-      const lastMatch = await matchRepo.getLastMatch();
+      const repos = await startConnection(serverId);
+      players = repos.playerRepo;
+      matches = repos.matchRepo;
+
+      const lastMatch = await matches.getLastMatch();
       // // handle if there are no reports in db
       if (!lastMatch) {
         channel.send('There are no matches reported.');
         return;
       }
-      await displayCurrentStreak(channel);
-      await displayStandings(channel);
+      await displayCurrentStreak(channel, players, matches);
+      await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
     }
@@ -125,11 +137,15 @@ client.on('message', async message => {
     }
     //   // add player if not in db
     try {
-      const player = await playerRepo.getById(newPlayer.id);
+      const repos = await startConnection(serverId);
+      players = repos.playerRepo;
+      matches = repos.matchRepo;
+
+      const player = await players.getById(newPlayer.id);
       if (player) {
         channel.send(`Player already exists!`);
       } else {
-        await playerRepo.add(newPlayer.id, newPlayer.username);
+        await players.add(newPlayer.id, newPlayer.username);
         // confirm player addition in channel
         channel.send(`@${newPlayer.username} has been added to the standings`);
       }
@@ -142,20 +158,25 @@ client.on('message', async message => {
    *   Handle !!cancellast command   *
    **********************************/
   if (content === '!!cancellast') {
-    // // get records
-    const lastMatch = await matchRepo.getLastMatch();
-    // // handle if there are no reports in db
-    if (!lastMatch) {
-      channel.send('There are no matches reported!');
-      return;
-    }
     try {
+      const repos = await startConnection(serverId);
+      players = repos.playerRepo;
+      matches = repos.matchRepo;
+
+      // get records
+      const lastMatch = await matches.getLastMatch();
+      // // handle if there are no reports in db
+      if (!lastMatch) {
+        channel.send('There are no matches reported!');
+        return;
+      }
+
       // delete most recent match
-      await matchRepo.deleteLastMatch();
+      await matches.deleteLastMatch();
       channel.send('The last report has been deleted');
       // // post current streak and standings
-      await displayCurrentStreak(channel);
-      await displayStandings(channel);
+      await displayCurrentStreak(channel, players, matches);
+      await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
     }
@@ -165,10 +186,13 @@ client.on('message', async message => {
    *   Handle !!reset command   *
    *****************************/
   if (content === '!!reset') {
-    // // TODO: confirm user wants to reset
     try {
-      await matchRepo.deleteAllMatches();
-      await playerRepo.deleteAllPlayers();
+      const repos = await startConnection(serverId);
+      players = repos.playerRepo;
+      matches = repos.matchRepo;
+
+      await matches.deleteAllMatches();
+      await players.deleteAllPlayers();
       // send reset message
       channel.send('Standings have been reset');
     } catch (err) {
@@ -176,30 +200,3 @@ client.on('message', async message => {
     }
   }
 });
-
-/************************
- *   Helper functions   *
- ************************/
-async function displayCurrentStreak(channel) {
-  try {
-    const lastMatch = await matchRepo.getLastMatch();
-    if (lastMatch) {
-      const playerName = (await playerRepo.getById(lastMatch.winner)).name;
-      channel.send(`*Running streak -  ${playerName}: **${lastMatch.streak}***`);
-    }
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function displayStandings(channel) {
-  try {
-    const players = await playerRepo.getPlayersSortedByStreak();
-    // // print standings
-    const header = `__Standings__\n`;
-    const rankings = players.map(player => `${player.name}: **${player.maxstreak}**`).join('\n');
-    channel.send(header.concat(rankings));
-  } catch (err) {
-    console.error(err);
-  }
-}
