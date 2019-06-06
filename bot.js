@@ -6,6 +6,7 @@ const fs = require('fs');
 const express = require('express');
 const { startConnection, createTablesIfNotExist, displayCurrentStreak, displayStandings } = require('./helpers');
 
+/* Ping self every 5 minutes */
 // const app = express();
 // app.get('/', (request, response) => {
 // app.get('/', (request, response) => {
@@ -62,10 +63,15 @@ client.on('message', async message => {
       return;
     }
 
-    db = await startConnection(serverId);
-    players = db.playerRepo;
-    matches = db.matchRepo;
     try {
+      console.log('db: ', db);
+      if (!db) {
+        db = await startConnection(serverId);
+      }
+      players = await db.playerRepo;
+      console.log(players);
+      matches = await db.matchRepo;
+      console.log(matches);
       await createTablesIfNotExist(serverId, players, matches);
       // add player if not in db
       await players.add(winner.id, winner.username);
@@ -80,7 +86,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
-      db.dao.close();
+      await db.dao.close();
     }
   }
 
@@ -88,10 +94,15 @@ client.on('message', async message => {
    *   Handle !!standings command   *
    *********************************/
   if (content === '!!standings') {
-    db = await startConnection(serverId);
-    players = db.playerRepo;
-    matches = db.matchRepo;
     try {
+      if (!db) {
+        db = await startConnection(serverId);
+      }
+      players = db.playerRepo;
+      matches = db.matchRepo;
+      // console.log('db: ', db);
+      // console.log('players: ', players);
+      // console.log('matches', matches);
       await createTablesIfNotExist(serverId, players, matches);
       const lastMatch = await matches.getLastMatch();
       // // handle if there are no reports in db
@@ -122,11 +133,13 @@ client.on('message', async message => {
       channel.send('Error: player cannot be a :robot:. Sorry, bot!');
       return;
     }
-    //   // add player if not in db
-    db = await startConnection(serverId);
-    players = db.playerRepo;
-    matches = db.matchRepo;
+
     try {
+      if (!db) {
+        db = await startConnection(serverId);
+      }
+      players = db.playerRepo;
+      matches = db.matchRepo;
       await createTablesIfNotExist(serverId, players, matches);
       const player = await players.getById(newPlayer.id);
       if (player) {
@@ -146,10 +159,12 @@ client.on('message', async message => {
    *   Handle !!cancellast command   *
    **********************************/
   if (content === '!!cancellast') {
-    db = await startConnection(serverId);
-    players = db.playerRepo;
-    matches = db.matchRepo;
     try {
+      if (!db) {
+        db = await startConnection(serverId);
+      }
+      players = db.playerRepo;
+      matches = db.matchRepo;
       await createTablesIfNotExist(serverId, players, matches);
       // get records
       const lastMatch = await matches.getLastMatch();
@@ -175,10 +190,12 @@ client.on('message', async message => {
    *   Handle !!reset command   *
    *****************************/
   if (content === '!!reset') {
-    db = await startConnection(serverId);
-    players = db.playerRepo;
-    matches = db.matchRepo;
     try {
+      if (!db) {
+        db = await startConnection(serverId);
+      }
+      players = db.playerRepo;
+      matches = db.matchRepo;
       await createTablesIfNotExist(serverId, players, matches);
       await matches.deleteAllMatches();
       await players.deleteAllPlayers();

@@ -9,10 +9,8 @@ class AppDAO {
   }
 
   close() {
-    this.db.close(err => {
-      if (err) console.error('Error with closing database connection', err);
-      else console.log('Database connection closed');
-    });
+    this.db.close();
+    console.log('database connection closed');
   }
 
   async run(sql, params = []) {
