@@ -1,10 +1,10 @@
 /* eslint-disable spaced-comment */
 require('dotenv').config();
 const { Client } = require('discord.js');
-const http = require('http');
-const fs = require('fs');
-const express = require('express');
-const { startConnection, createTablesIfNotExist, displayCurrentStreak, displayStandings } = require('./helpers');
+// const http = require('http');
+// const fs = require('fs');
+// const express = require('express');
+const { startConnection, createTables, displayCurrentStreak, displayStandings } = require('./helpers');
 
 /* Ping self every 5 minutes */
 // const app = express();
@@ -28,7 +28,7 @@ client.on('ready', () => {
 client.login(process.env.BOT_TOKEN);
 
 const disallowBots = false;
-let db;
+let conn;
 
 client.on('message', async message => {
   const { content, channel } = message;
@@ -64,15 +64,18 @@ client.on('message', async message => {
     }
 
     try {
-      console.log('db: ', db);
-      if (!db) {
-        db = await startConnection(serverId);
+      console.log('db: ', conn);
+      // console.log('dbList: ', dbList);
+      if (!conn) {
+        conn = await startConnection(serverId);
       }
-      players = await db.playerRepo;
+      players = await conn.playerRepo;
       console.log(players);
-      matches = await db.matchRepo;
+      matches = await conn.matchRepo;
       console.log(matches);
-      await createTablesIfNotExist(serverId, players, matches);
+      if (conn.isNewServer) {
+        await createTables(serverId, players, matches);
+      }
       // add player if not in db
       await players.add(winner.id, winner.username);
       // get last match and calculate new streak
@@ -86,7 +89,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
-      await db.dao.close();
+      await conn.dao.close();
     }
   }
 
@@ -95,16 +98,22 @@ client.on('message', async message => {
    *********************************/
   if (content === '!!standings') {
     try {
-      if (!db) {
-        db = await startConnection(serverId);
+      if (!conn) {
+        conn = startConnection(serverId);
+        players = conn.playerRepo;
+        matches = conn.matchRepo;
+        await createTables(serverId, players, matches);
+      } else {
+        players = conn.playerRepo;
+        matches = conn.matchRepo;
       }
-      players = db.playerRepo;
-      matches = db.matchRepo;
-      // console.log('db: ', db);
-      // console.log('players: ', players);
-      // console.log('matches', matches);
-      await createTablesIfNotExist(serverId, players, matches);
+      console.log('db: ', conn);
+      console.log('players: ', players);
+      console.log('matches', matches);
+      // await createTables(serverId, players, matches);
+      console.log('table creation complete');
       const lastMatch = await matches.getLastMatch();
+      console.log('got last match');
       // // handle if there are no reports in db
       if (!lastMatch) {
         channel.send('There are no matches reported.');
@@ -114,7 +123,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
-      db.dao.close();
+      conn.dao.close();
     }
   }
 
@@ -135,12 +144,12 @@ client.on('message', async message => {
     }
 
     try {
-      if (!db) {
-        db = await startConnection(serverId);
+      if (!conn) {
+        conn = await startConnection(serverId);
       }
-      players = db.playerRepo;
-      matches = db.matchRepo;
-      await createTablesIfNotExist(serverId, players, matches);
+      players = conn.playerRepo;
+      matches = conn.matchRepo;
+      await createTables(serverId, players, matches);
       const player = await players.getById(newPlayer.id);
       if (player) {
         channel.send(`Player already exists!`);
@@ -151,7 +160,7 @@ client.on('message', async message => {
       }
     } catch (err) {
       console.error(err);
-      db.dao.close();
+      conn.dao.close();
     }
   }
 
@@ -160,12 +169,12 @@ client.on('message', async message => {
    **********************************/
   if (content === '!!cancellast') {
     try {
-      if (!db) {
-        db = await startConnection(serverId);
+      if (!conn) {
+        conn = await startConnection(serverId);
       }
-      players = db.playerRepo;
-      matches = db.matchRepo;
-      await createTablesIfNotExist(serverId, players, matches);
+      players = conn.playerRepo;
+      matches = conn.matchRepo;
+      await createTables(serverId, players, matches);
       // get records
       const lastMatch = await matches.getLastMatch();
       // // handle if there are no reports in db
@@ -182,7 +191,7 @@ client.on('message', async message => {
       await displayStandings(channel, players);
     } catch (err) {
       console.error(err);
-      db.dao.close();
+      conn.dao.close();
     }
   }
 
@@ -191,26 +200,33 @@ client.on('message', async message => {
    *****************************/
   if (content === '!!reset') {
     try {
-      if (!db) {
-        db = await startConnection(serverId);
+      if (!conn) {
+        conn = await startConnection(serverId);
       }
-      players = db.playerRepo;
-      matches = db.matchRepo;
-      await createTablesIfNotExist(serverId, players, matches);
+      players = conn.playerRepo;
+      matches = conn.matchRepo;
+      await createTables(serverId, players, matches);
       await matches.deleteAllMatches();
       await players.deleteAllPlayers();
       // send reset message
       channel.send('Standings have been reset');
     } catch (err) {
       console.error(err);
-      db.dao.close();
+      conn.dao.close();
     }
+  }
+
+  /*****************************
+   *   Handle !!db command   *
+   *****************************/
+  if (content === '!!db') {
+    console.log('DB: ', conn);
   }
 });
 
 client.on('disconnect', () => {
-  if (db) db.dao.close();
+  if (conn) conn.dao.close();
 });
 client.on('error', () => {
-  if (db) db.dao.close();
+  if (conn) conn.dao.close();
 });
