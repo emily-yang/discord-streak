@@ -7,10 +7,11 @@ const PlayerRepository = require('./db/PlayerRepository');
 const MatchRepository = require('./db/MatchRepository');
 
 async function getDBConnection(conn, serverId) {
-  const connection = conn || (await startConnection(serverId));
+  const connection = conn || startConnection(serverId);
   const { playerRepo, matchRepo } = connection;
   if (connection.isNewServer) {
     await createTables(serverId, playerRepo, matchRepo);
+    connection.isNewServer = false;
   }
   return { playerRepo, matchRepo, connection };
 }
@@ -25,7 +26,7 @@ function startConnection(serverId) {
   return { playerRepo, matchRepo, dao, isNewServer };
 }
 
-async function createTables(serverId, players, matches) {
+async function createTables(players, matches) {
   await players.createTable();
   await matches.createTable();
 }

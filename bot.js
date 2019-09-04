@@ -1,22 +1,20 @@
 /* eslint-disable spaced-comment */
 require('dotenv').config();
 const { Client } = require('discord.js');
-const http = require('http');
-const fs = require('fs');
 const express = require('express');
 const { getDBConnection, displayCurrentStreak, displayStandings } = require('./helpers');
 
-/* Ping self every 5 minutes */
-// const app = express();
-// app.get('/', (request, response) => {
-// app.get('/', (request, response) => {
-//   console.log(`${Date.now()} Ping Received`);
-//   response.sendStatus(200);
-// });
-// app.listen(process.env.PORT);
-// setInterval(() => {
-//   http.get(`http://${process.env.PROJECT_DOMAIN}.${pro}/`);
-// }, 280000);
+/* Ping self every 30 minutes */
+const app = express();
+app.get('/', (request, response) => {
+app.get('/', (request, response) => {
+  console.log(`${Date.now()} Ping Received`);
+  response.sendStatus(200);
+});
+app.listen(process.env.PORT);
+setInterval(() => {
+  http.get(`http://${process.env.PROJECT_DOMAIN}.${process.env.HOST}/`);
+}, 1800000);
 
 const client = new Client();
 
@@ -26,8 +24,7 @@ client.on('ready', () => {
 });
 
 client.login(process.env.BOT_TOKEN);
-
-const disallowBots = false;
+const disallowBots = process.env.DISALLOW_BOTS;
 let conn;
 
 client.on('message', async message => {
@@ -64,10 +61,10 @@ client.on('message', async message => {
     }
 
     try {
-      const connData = await getDBConnection(conn, serverId);
-      conn = connData.connection;
-      players = connData.playerRepo;
-      matches = connData.matchRepo;
+      const { connection, playerRepo, matchRepo } = await getDBConnection(conn, serverId);
+      conn = connection;
+      players = playerRepo;
+      matches = matchRepo;
 
       // add player if not in db
       await players.add(winner.id, winner.username);
@@ -91,10 +88,10 @@ client.on('message', async message => {
    *********************************/
   if (content === '!!standings') {
     try {
-      const connData = await getDBConnection(conn, serverId);
-      conn = connData.connection;
-      players = connData.playerRepo;
-      matches = connData.matchRepo;
+      const { connection, playerRepo, matchRepo } = await getDBConnection(conn, serverId);
+      conn = connection;
+      players = playerRepo;
+      matches = matchRepo;
 
       const lastMatch = await matches.getLastMatch();
 
@@ -128,10 +125,10 @@ client.on('message', async message => {
     }
 
     try {
-      const connData = await getDBConnection(conn, serverId);
-      conn = connData.connection;
-      players = connData.playerRepo;
-      matches = connData.matchRepo;
+      const { connection, playerRepo, matchRepo } = await getDBConnection(conn, serverId);
+      conn = connection;
+      players = playerRepo;
+      matches = matchRepo;
 
       const player = await players.getById(newPlayer.id);
       if (player) {
@@ -152,10 +149,10 @@ client.on('message', async message => {
    **********************************/
   if (content === '!!cancellast') {
     try {
-      const connData = await getDBConnection(conn, serverId);
-      conn = connData.connection;
-      players = connData.playerRepo;
-      matches = connData.matchRepo;
+      const { connection, playerRepo, matchRepo } = await getDBConnection(conn, serverId);
+      conn = connection;
+      players = playerRepo;
+      matches = matchRepo;
 
       // get records
       const lastMatch = await matches.getLastMatch();
@@ -182,10 +179,10 @@ client.on('message', async message => {
    *****************************/
   if (content === '!!reset') {
     try {
-      const connData = await getDBConnection(conn, serverId);
-      conn = connData.connection;
-      players = connData.playerRepo;
-      matches = connData.matchRepo;
+      const { connection, playerRepo, matchRepo } = await getDBConnection(conn, serverId);
+      conn = connection;
+      players = playerRepo;
+      matches = matchRepo;
 
       await matches.deleteAllMatches();
       await players.deleteAllPlayers();
