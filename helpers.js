@@ -18,9 +18,9 @@ async function getDBConnection(conn, serverId) {
 
 function startConnection(serverId) {
   // check if db is for a preexisting server before creating db file
-  const isNewServer = !fs.existsSync(`./db/servers/.${serverId}`);
+  const isNewServer = !fs.existsSync(`${__dirname}/db/servers/.${serverId}`);
 
-  const dao = new AppDAO(`./db/servers/.${serverId}`);
+  const dao = new AppDAO(`${__dirname}/db/servers/.${serverId}`);
   const playerRepo = new PlayerRepository(dao);
   const matchRepo = new MatchRepository(dao);
   return { playerRepo, matchRepo, dao, isNewServer };
