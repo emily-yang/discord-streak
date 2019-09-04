@@ -6,6 +6,15 @@ const AppDAO = require('./db/dao');
 const PlayerRepository = require('./db/PlayerRepository');
 const MatchRepository = require('./db/MatchRepository');
 
+async function getDBConnection(conn, serverId) {
+  const connection = conn || (await startConnection(serverId));
+  const { playerRepo, matchRepo } = connection;
+  if (connection.isNewServer) {
+    await createTables(serverId, playerRepo, matchRepo);
+  }
+  return { playerRepo, matchRepo, connection };
+}
+
 function startConnection(serverId) {
   // check if db is for a preexisting server before creating db file
   const isNewServer = !fs.existsSync(`./db/servers/.${serverId}`);
@@ -45,4 +54,4 @@ async function displayStandings(channel, players) {
   }
 }
 
-module.exports = { startConnection, createTables, displayCurrentStreak, displayStandings };
+module.exports = { getDBConnection, displayCurrentStreak, displayStandings };

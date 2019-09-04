@@ -1,10 +1,10 @@
 /* eslint-disable spaced-comment */
 require('dotenv').config();
 const { Client } = require('discord.js');
-// const http = require('http');
-// const fs = require('fs');
-// const express = require('express');
-const { startConnection, createTables, displayCurrentStreak, displayStandings } = require('./helpers');
+const http = require('http');
+const fs = require('fs');
+const express = require('express');
+const { getDBConnection, displayCurrentStreak, displayStandings } = require('./helpers');
 
 /* Ping self every 5 minutes */
 // const app = express();
@@ -15,7 +15,7 @@ const { startConnection, createTables, displayCurrentStreak, displayStandings } 
 // });
 // app.listen(process.env.PORT);
 // setInterval(() => {
-//   http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
+//   http.get(`http://${process.env.PROJECT_DOMAIN}.${pro}/`);
 // }, 280000);
 
 const client = new Client();
@@ -64,18 +64,11 @@ client.on('message', async message => {
     }
 
     try {
-      console.log('db: ', conn);
-      // console.log('dbList: ', dbList);
-      if (!conn) {
-        conn = await startConnection(serverId);
-      }
-      players = await conn.playerRepo;
-      console.log(players);
-      matches = await conn.matchRepo;
-      console.log(matches);
-      if (conn.isNewServer) {
-        await createTables(serverId, players, matches);
-      }
+      const connData = await getDBConnection(conn, serverId);
+      conn = connData.connection;
+      players = connData.playerRepo;
+      matches = connData.matchRepo;
+
       // add player if not in db
       await players.add(winner.id, winner.username);
       // get last match and calculate new streak
@@ -98,22 +91,13 @@ client.on('message', async message => {
    *********************************/
   if (content === '!!standings') {
     try {
-      if (!conn) {
-        conn = startConnection(serverId);
-        players = conn.playerRepo;
-        matches = conn.matchRepo;
-        await createTables(serverId, players, matches);
-      } else {
-        players = conn.playerRepo;
-        matches = conn.matchRepo;
-      }
-      console.log('db: ', conn);
-      console.log('players: ', players);
-      console.log('matches', matches);
-      // await createTables(serverId, players, matches);
-      console.log('table creation complete');
+      const connData = await getDBConnection(conn, serverId);
+      conn = connData.connection;
+      players = connData.playerRepo;
+      matches = connData.matchRepo;
+
       const lastMatch = await matches.getLastMatch();
-      console.log('got last match');
+
       // // handle if there are no reports in db
       if (!lastMatch) {
         channel.send('There are no matches reported.');
@@ -144,12 +128,11 @@ client.on('message', async message => {
     }
 
     try {
-      if (!conn) {
-        conn = await startConnection(serverId);
-      }
-      players = conn.playerRepo;
-      matches = conn.matchRepo;
-      await createTables(serverId, players, matches);
+      const connData = await getDBConnection(conn, serverId);
+      conn = connData.connection;
+      players = connData.playerRepo;
+      matches = connData.matchRepo;
+
       const player = await players.getById(newPlayer.id);
       if (player) {
         channel.send(`Player already exists!`);
@@ -169,12 +152,11 @@ client.on('message', async message => {
    **********************************/
   if (content === '!!cancellast') {
     try {
-      if (!conn) {
-        conn = await startConnection(serverId);
-      }
-      players = conn.playerRepo;
-      matches = conn.matchRepo;
-      await createTables(serverId, players, matches);
+      const connData = await getDBConnection(conn, serverId);
+      conn = connData.connection;
+      players = connData.playerRepo;
+      matches = connData.matchRepo;
+
       // get records
       const lastMatch = await matches.getLastMatch();
       // // handle if there are no reports in db
@@ -200,12 +182,11 @@ client.on('message', async message => {
    *****************************/
   if (content === '!!reset') {
     try {
-      if (!conn) {
-        conn = await startConnection(serverId);
-      }
-      players = conn.playerRepo;
-      matches = conn.matchRepo;
-      await createTables(serverId, players, matches);
+      const connData = await getDBConnection(conn, serverId);
+      conn = connData.connection;
+      players = connData.playerRepo;
+      matches = connData.matchRepo;
+
       await matches.deleteAllMatches();
       await players.deleteAllPlayers();
       // send reset message
@@ -214,13 +195,6 @@ client.on('message', async message => {
       console.error(err);
       conn.dao.close();
     }
-  }
-
-  /*****************************
-   *   Handle !!db command   *
-   *****************************/
-  if (content === '!!db') {
-    console.log('DB: ', conn);
   }
 });
 
