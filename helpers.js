@@ -10,7 +10,7 @@ async function getDBConnection(conn, serverId) {
   const connection = conn || startConnection(serverId);
   const { playerRepo, matchRepo } = connection;
   if (connection.isNewServer) {
-    await createTables(serverId, playerRepo, matchRepo);
+    await createTables(playerRepo, matchRepo);
     connection.isNewServer = false;
   }
   return { playerRepo, matchRepo, connection };
