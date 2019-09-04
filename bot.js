@@ -1,12 +1,13 @@
 /* eslint-disable spaced-comment */
 require('dotenv').config();
 const { Client } = require('discord.js');
+const http = require('http');
 const express = require('express');
 const { getDBConnection, displayCurrentStreak, displayStandings } = require('./helpers');
 
 /* Ping self every 30 minutes */
 const app = express();
-app.get('/', (request, response) => {
+
 app.get('/', (request, response) => {
   console.log(`${Date.now()} Ping Received`);
   response.sendStatus(200);
